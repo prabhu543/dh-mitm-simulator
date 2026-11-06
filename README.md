@@ -144,8 +144,3 @@ A Man-in-the-Middle (MITM) attack can be prevented by using proper authenticatio
 
 ### Conclusion
 Using TLS, digital certificates, and out-of-band verification helps protect Diffie-Hellman key exchange from Man-in-the-Middle attacks by ensuring authentication, integrity, and secure communication.
-
-## License
-
-Add a license before distributing this project publicly. If you choose MIT,
-include the standard MIT License text in a `LICENSE` file.
