@@ -4,6 +4,7 @@ An interactive educational web application that demonstrates how an attacker
 (Mallory) can intercept an unauthenticated Diffie-Hellman key exchange between
 Alice and Bob.
 
+🚀 **Live Demo:** [https://dh-mitm-simulator.onrender.com](https://dh-mitm-simulator.onrender.com)
 ## Features
 
 - Visualizes Alice, Bob, and Mallory in a three-party dashboard.
