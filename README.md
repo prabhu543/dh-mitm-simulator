@@ -120,6 +120,31 @@ still succeeds.
 - Tailwind CSS CDN
 - Font Awesome CDN
 
+## Solutions & Mitigations: How to Prevent This Attack
+
+A Man-in-the-Middle (MITM) attack can be prevented by using proper authentication and secure communication methods.
+
+### 1. TLS (Transport Layer Security)
+- TLS secures communication between two parties.
+- It uses an authenticated handshake to establish a secure connection.
+- It protects cryptographic parameters from unauthorized modification.
+- It helps prevent attackers from manipulating the key exchange process.
+
+### 2. Digital Certificate Signatures
+- Digital certificates bind public keys to verified identities.
+- Certificates are issued and digitally signed by trusted Certificate Authorities (CAs).
+- Both parties can verify the identity of the other party before exchanging keys.
+- This prevents an attacker from easily impersonating Alice or Bob.
+
+### 3. Out-of-Band (OOB) Verification
+- OOB verification checks key fingerprints through a separate, trusted communication channel.
+- For example, Alice and Bob can compare their key fingerprints through a phone call.
+- If the fingerprints do not match, they can identify a possible MITM attack.
+- It provides an additional layer of security against impersonation and eavesdropping.
+
+### Conclusion
+Using TLS, digital certificates, and out-of-band verification helps protect Diffie-Hellman key exchange from Man-in-the-Middle attacks by ensuring authentication, integrity, and secure communication.
+
 ## License
 
 Add a license before distributing this project publicly. If you choose MIT,
