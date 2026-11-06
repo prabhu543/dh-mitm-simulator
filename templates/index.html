@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="An educational interactive simulation demonstrating the Diffie-Hellman Man-in-the-Middle attack.">
+    <title>Diffie–Hellman MITM Attack Simulator</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body class="min-h-screen flex flex-col justify-between p-3 md:p-6 text-slate-200">
+
+    <!-- TOP HEADER BAR -->
+    <header class="mb-6">
+        <div class="glass-panel rounded-2xl p-4 md:p-6 border border-slate-800 flex flex-col lg:flex-row justify-between items-center gap-4 shadow-2xl">
+            <div class="flex items-center space-x-4">
+                <div class="p-3 bg-cyan-950/80 border border-cyan-500/40 rounded-xl text-cyan-400 text-2xl">
+                    <i class="fa-solid fa-user-shield"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-extrabold tracking-tight text-white">
+                        Diffie–Hellman MITM Attack Simulator
+                    </h1>
+                </div>
+            </div>
+
+            <!-- Header Action Controls -->
+            <div class="flex items-center gap-2 flex-wrap w-full lg:w-auto justify-end">
+<button id="btn-init-dh" onclick="initializeDHKeys()" class="px-4 py-2 bg-cyan-600 hover:bg-cyan-500 text-white text-sm font-semibold rounded-xl shadow-lg shadow-cyan-900/40 transition duration-150 flex items-center gap-2">
+                    <i class="fa-solid fa-key"></i> 1. Start DH Key Exchange
+                </button>
+                <button onclick="resetSimulation()" class="px-3 py-2 bg-rose-950/60 hover:bg-rose-900/80 text-rose-300 text-sm font-semibold rounded-xl border border-rose-800/50 transition duration-150">
+                    <i class="fa-solid fa-rotate-right"></i> Reset
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- KEY EXCHANGE DOMAIN & PARAMETER BAR -->
+    <section class="mb-6">
+        <div class="glass-panel rounded-2xl p-4 border border-slate-800 text-xs font-mono grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+            <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                <span class="text-slate-500 block">Modulus (p):</span>
+                <span id="display-p" class="text-cyan-400 font-bold text-sm">23 (Toy Prime)</span>
+            </div>
+            <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                <span class="text-slate-500 block">Generator (g):</span>
+                <span id="display-g" class="text-cyan-400 font-bold text-sm">5 (Primitive Root)</span>
+            </div>
+            <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                <span class="text-slate-500 block">Alice Secret (a):</span>
+                <span id="display-a" class="text-blue-400 font-bold text-sm">a = 6</span>
+            </div>
+            <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                <span class="text-slate-500 block">Bob Secret (b):</span>
+                <span id="display-b" class="text-emerald-400 font-bold text-sm">b = 15</span>
+            </div>
+            <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                <span class="text-slate-500 block">Mallory (m_A):</span>
+                <span id="display-ma" class="text-rose-400 font-bold text-sm">mA = 4</span>
+            </div>
+            <div class="bg-slate-900/80 p-2.5 rounded-lg border border-slate-800">
+                <span class="text-slate-500 block">Mallory (m_B):</span>
+                <span id="display-mb" class="text-rose-400 font-bold text-sm">mB = 9</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- NETWORK FLOW & GRAPHICAL PACKET PATH -->
+    <div class="mb-6 relative">
+        <div class="glass-panel rounded-2xl p-4 border border-slate-800 flex items-center justify-between text-xs font-semibold relative overflow-hidden">
+            <div class="flex items-center gap-2 text-cyan-400">
+                <span class="w-3 h-3 rounded-full bg-cyan-400 inline-block animate-ping"></span>
+                <span>Alice (Node A)</span>
+            </div>
+            <div id="packet-visualizer" class="flex-1 px-8 relative h-6 flex items-center justify-center">
+                <div class="w-full h-0.5 bg-slate-800 relative flex items-center justify-between">
+                    <span class="h-2 w-2 rounded-full bg-slate-600"></span>
+                    <span class="h-3 w-3 rounded-full bg-rose-500/80 border border-rose-400"></span>
+                    <span class="h-2 w-2 rounded-full bg-slate-600"></span>
+                </div>
+                <div id="packet-node" class="hidden absolute left-0 p-1.5 rounded-full bg-amber-400 text-slate-950 shadow-lg shadow-amber-400/50 transition-all duration-700 text-[10px] font-bold">
+                    <i id="packet-icon" class="fa-solid fa-lock"></i> <span id="packet-dir-label">Packet</span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 text-rose-400">
+                <span>Mallory (MITM Proxy)</span>
+            </div>
+            <div class="flex-1 px-8 relative h-6 flex items-center justify-center">
+                <div class="w-full h-0.5 bg-slate-800 relative flex items-center justify-between">
+                    <span class="h-2 w-2 rounded-full bg-slate-600"></span>
+                    <span class="h-3 w-3 rounded-full bg-emerald-500/80 border border-emerald-400"></span>
+                    <span class="h-2 w-2 rounded-full bg-slate-600"></span>
+                </div>
+            </div>
+            <div class="flex items-center gap-2 text-emerald-400">
+                <span>Bob (Node B)</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- MAIN THREE-PARTY DASHBOARD PANEL LAYOUT -->
+    <main class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+
+        <!-- 1. ALICE PANEL (BLUE THEME) -->
+        <section class="glass-panel rounded-2xl p-5 border border-cyan-500/30 glow-blue flex flex-col justify-between space-y-4">
+            <div>
+                <!-- Panel Header -->
+                <div class="flex justify-between items-center pb-3 border-b border-cyan-900/50">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-2.5 rounded-lg bg-cyan-950 text-cyan-400 border border-cyan-800">
+                            <i class="fa-solid fa-laptop-code text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-white text-base">Alice</h2>
+                            <p class="text-xs text-cyan-400 font-medium">Legitimate Sender / Receiver</p>
+                        </div>
+                    </div>
+                    <span id="alice-status" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-900 text-slate-400 border border-slate-800">
+                        Idle
+                    </span>
+                </div>
+
+                <!-- DH Key Info -->
+                <div class="mt-4 bg-slate-950/70 rounded-xl p-3 border border-cyan-950/60 font-mono text-xs space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Calculated Public Key (A):</span>
+                        <span id="alice-public-key" class="text-cyan-300 font-bold">Uncalculated</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Received Public Key:</span>
+                        <span id="alice-rec-public-key" class="text-rose-400 font-bold">None</span>
+                    </div>
+                    <div class="flex justify-between pt-1 border-t border-slate-800">
+                        <span class="text-slate-300">Derived Key (K_AM):</span>
+                        <span id="alice-shared-secret" class="text-amber-300 font-bold">Unestablished</span>
+                    </div>
+                </div>
+
+                <!-- Message Send Input -->
+                <div class="mt-4 space-y-2">
+                    <label class="block text-xs font-semibold text-slate-300">Plaintext Message to Send (Alice → Bob):</label>
+                    <textarea id="alice-message-input" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-400 transition" placeholder="Enter a msg..."></textarea>
+                </div>
+
+                <!-- Alice Inbox (Received Replies from Bob) -->
+                <div class="mt-4 space-y-2">
+                    <label class="block text-xs font-semibold text-cyan-300">Alice Inbox (Received Reply from Bob):</label>
+                    <div id="alice-inbox-display" class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-sm text-cyan-400 min-h-[50px] flex items-center justify-center text-center">
+                        <span class="text-slate-600 italic">No reply received yet</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Button -->
+            <div class="pt-2">
+                <button id="btn-alice-send" onclick="aliceSendMessage()" disabled class="w-full py-3 bg-cyan-600 hover:bg-cyan-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl shadow-lg shadow-cyan-950 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-paper-plane"></i> Send Encrypted to Bob
+                </button>
+            </div>
+        </section>
+
+        <!-- 2. MALLORY PANEL (RED / MITM ATTACKER THEME) -->
+        <section class="glass-panel rounded-2xl p-5 border border-rose-500/40 glow-red flex flex-col justify-between space-y-4 relative">
+            <div class="absolute -top-3 left-1/2 transform -translate-x-1/2 px-3 py-0.5 rounded-full bg-rose-600 text-[10px] font-black tracking-wider text-white uppercase shadow-md">
+                Man-in-the-Middle Interceptor
+            </div>
+
+            <div>
+                <!-- Panel Header -->
+                <div class="flex justify-between items-center pb-3 border-b border-rose-900/50">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-2.5 rounded-lg bg-rose-950 text-rose-400 border border-rose-800">
+                            <i class="fa-solid fa-user-ninja text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-white text-base">Mallory</h2>
+                            <p class="text-xs text-rose-400 font-medium">Active Interceptor / Attacker</p>
+                        </div>
+                    </div>
+                    <span id="mallory-status" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-rose-950/80 text-rose-300 border border-rose-800">
+                        Listening
+                    </span>
+                </div>
+
+                <!-- Mallory DH Substituted Keys Info -->
+                <div class="mt-4 bg-slate-950/80 rounded-xl p-3 border border-rose-950/80 font-mono text-xs space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Substituted Key (M_A -> Alice):</span>
+                        <span id="mallory-ma-key" class="text-rose-400 font-bold">M_A = 12</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Substituted Key (M_B -> Bob):</span>
+                        <span id="mallory-mb-key" class="text-rose-400 font-bold">M_B = 11</span>
+                    </div>
+                    <div class="flex justify-between pt-1 border-t border-slate-800">
+                        <span class="text-slate-400">Computed Secret (K_AM):</span>
+                        <span id="mallory-kam-secret" class="text-amber-300 font-bold">Unestablished</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Computed Secret (K_MB):</span>
+                        <span id="mallory-kmb-secret" class="text-emerald-300 font-bold">Unestablished</span>
+                    </div>
+                </div>
+
+                <!-- Intercepted Packet Details -->
+                <div class="mt-3 space-y-1.5">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-xs font-semibold text-rose-300">Intercepted Ciphertext (Hex):</label>
+                        <span id="direction-tag" class="text-[10px] font-mono px-2 py-0.5 rounded bg-slate-900 border border-slate-800 text-amber-400 font-bold">IDLE</span>
+                    </div>
+                    <div id="mallory-ciphertext-display" class="bg-slate-950 border border-rose-900/40 rounded-xl p-2.5 font-mono text-[11px] text-rose-300 break-all min-h-[44px] flex items-center">
+                        No active transmission intercepted.
+                    </div>
+                </div>
+
+                <!-- AUTO-DECRYPTED Plaintext & Tamper Field -->
+                <div class="mt-3 space-y-1.5">
+                    <div class="flex justify-between items-center">
+                        <label class="block text-xs font-semibold text-emerald-300 flex items-center gap-1.5">
+                            <i class="fa-solid fa-eye text-emerald-400"></i> Auto-Decrypted Plaintext / Tamper:
+                        </label>
+                        <span class="text-[10px] text-slate-400 bg-emerald-950/60 px-2 py-0.5 rounded border border-emerald-800/50">Auto-Revealed</span>
+                    </div>
+                    <textarea id="mallory-modified-input" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded-xl p-2.5 text-sm text-slate-100 focus:outline-none focus:border-rose-400 transition" placeholder="Decrypted message will automatically appear here upon interception..."></textarea>
+                </div>
+            </div>
+
+            <!-- Interception Action Workflow Controls -->
+            <div class="pt-2 space-y-2">
+                <div class="grid grid-cols-2 gap-2">
+                    <button id="btn-mallory-forward-mod" onclick="malloryForwardMessage(true)" disabled class="py-2.5 bg-rose-600 hover:bg-rose-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-file-pen"></i> Forward Tampered
+                    </button>
+                    <button id="btn-mallory-forward-unmod" onclick="malloryForwardMessage(false)" disabled class="py-2.5 bg-amber-600 hover:bg-amber-500 disabled:opacity-40 disabled:cursor-not-allowed text-white text-xs font-bold rounded-xl shadow-lg transition flex items-center justify-center gap-1.5">
+                        <i class="fa-solid fa-share"></i> Forward Original
+                    </button>
+                </div>
+                <button id="btn-mallory-drop" onclick="malloryDropMessage()" disabled class="w-full py-2 bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-rose-400 border border-rose-900/50 text-xs font-bold rounded-xl transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-ban"></i> Drop Packet (Suppress Delivery)
+                </button>
+            </div>
+        </section>
+
+        <!-- 3. BOB PANEL (GREEN THEME) -->
+        <section class="glass-panel rounded-2xl p-5 border border-emerald-500/30 glow-green flex flex-col justify-between space-y-4">
+            <div>
+                <!-- Panel Header -->
+                <div class="flex justify-between items-center pb-3 border-b border-emerald-900/50">
+                    <div class="flex items-center space-x-3">
+                        <div class="p-2.5 rounded-lg bg-emerald-950 text-emerald-400 border border-emerald-800">
+                            <i class="fa-solid fa-server text-lg"></i>
+                        </div>
+                        <div>
+                            <h2 class="font-bold text-white text-base">Bob</h2>
+                            <p class="text-xs text-emerald-400 font-medium">Intended Receiver / Sender</p>
+                        </div>
+                    </div>
+                    <span id="bob-status" class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-900 text-slate-400 border border-slate-800">
+                        Idle
+                    </span>
+                </div>
+
+                <!-- DH Key Info -->
+                <div class="mt-4 bg-slate-950/70 rounded-xl p-3 border border-emerald-950/60 font-mono text-xs space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Calculated Public Key (B):</span>
+                        <span id="bob-public-key" class="text-emerald-300 font-bold">Uncalculated</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-400">Received Public Key:</span>
+                        <span id="bob-rec-public-key" class="text-rose-400 font-bold">None</span>
+                    </div>
+                    <div class="flex justify-between pt-1 border-t border-slate-800">
+                        <span class="text-slate-300">Derived Key (K_MB):</span>
+                        <span id="bob-shared-secret" class="text-emerald-300 font-bold">Unestablished</span>
+                    </div>
+                </div>
+
+                <!-- Received Message Display -->
+                <div class="mt-4 space-y-2">
+                    <label class="block text-xs font-semibold text-slate-300">Decrypted Message Received (from Alice via MITM):</label>
+                    <div id="bob-received-display" class="bg-slate-950 border border-slate-800 rounded-xl p-3 font-mono text-sm text-emerald-400 min-h-[50px] flex items-center justify-center text-center">
+                        <span class="text-slate-600 italic">No message delivered yet</span>
+                    </div>
+                </div>
+
+                <!-- Reverse Reply Input Section -->
+                <div class="mt-4 space-y-2">
+                    <label class="block text-xs font-semibold text-emerald-300">Reply to Alice (Bob → Alice):</label>
+                    <textarea id="bob-reply-input" rows="2" class="w-full bg-slate-950 border border-slate-800 rounded-xl p-2.5 text-sm text-slate-200 focus:outline-none focus:border-emerald-400 transition" placeholder="Enter a msg..."></textarea>
+                </div>
+            </div>
+
+            <!-- Reply Action Button -->
+            <div class="pt-2">
+                <button id="btn-bob-reply" onclick="bobSendReply()" disabled class="w-full py-3 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 disabled:cursor-not-allowed text-white text-sm font-semibold rounded-xl shadow-lg shadow-emerald-950 transition flex items-center justify-center gap-2">
+                    <i class="fa-solid fa-reply"></i> Send Encrypted Reply to Alice
+                </button>
+            </div>
+        </section>
+    </main>
+
+    <!-- REAL-TIME EVENT LOG SECTION -->
+    <footer class="glass-panel rounded-2xl p-4 border border-slate-800">
+        <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-800">
+            <h3 class="text-xs font-bold text-slate-300 uppercase tracking-wider flex items-center gap-2">
+                <i class="fa-solid fa-list-check text-cyan-400"></i> Audit Activity & Attack Log
+            </h3>
+            <span class="text-[10px] text-slate-500 font-mono">Real-time Cryptographic Lifecycle Events</span>
+        </div>
+        <div id="activity-log" class="h-32 overflow-y-auto space-y-1.5 font-mono text-xs pr-2">
+            <div class="text-slate-500">[SYSTEM] Simulator initialized. Click "Start DH Key Exchange" to begin.</div>
+        </div>
+    </footer>
+
+    <!-- THEORY MODAL -->
+    <div id="theory-modal" class="fixed inset-0 bg-slate-950/80 backdrop-filter backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+        <div class="glass-panel bg-slate-900 rounded-2xl max-w-3xl w-full p-6 border border-slate-700 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-center pb-4 border-b border-slate-800 mb-4">
+                <h2 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fa-solid fa-graduation-cap text-cyan-400"></i> Cryptographic Mechanics: Diffie–Hellman MITM
+                </h2>
+                <button onclick="toggleTheoryModal()" class="text-slate-400 hover:text-white"><i class="fa-solid fa-xmark text-xl"></i></button>
+            </div>
+            
+            <div class="space-y-4 text-xs md:text-sm text-slate-300 leading-relaxed">
+                <div class="p-3 bg-cyan-950/40 border border-cyan-800/40 rounded-xl">
+                    <h3 class="font-bold text-cyan-300 mb-1">1. Normal Diffie–Hellman Key Exchange</h3>
+                    <p>Alice and Bob agree on public parameters modulus <code class="text-cyan-400">p</code> and generator <code class="text-cyan-400">g</code>. Alice chooses private key <code class="text-cyan-400">a</code>, computes public key <code class="text-cyan-400">A = g^a mod p</code>. Bob chooses private key <code class="text-cyan-400">b</code>, computes public key <code class="text-cyan-400">B = g^b mod p</code>. Both compute the identical secret <code class="text-amber-300">K = g^(ab) mod p</code>.</p>
+                </div>
+
+                <div class="p-3 bg-rose-950/40 border border-rose-800/40 rounded-xl">
+                    <h3 class="font-bold text-rose-300 mb-1">2. Unauthenticated Key Substitution (MITM)</h3>
+                    <p>Standard Diffie–Hellman does <strong>not authenticate identity</strong>. Mallory sits on the network path, intercepts Alice's public key <code class="text-cyan-400">A</code>, and sends Alice her own key <code class="text-rose-400">M_A</code>. She also intercepts Bob's public key <code class="text-cyan-400">B</code> and sends Bob <code class="text-rose-400">M_B</code>.</p>
+                </div>
+
+                <div class="p-3 bg-amber-950/40 border border-amber-800/40 rounded-xl">
+                    <h3 class="font-bold text-amber-300 mb-1">3. Dual Secret Establishment & Bi-Directional Interception</h3>
+                    <p>Alice and Mallory compute key <code class="text-amber-300">K_AM</code>. Bob and Mallory compute key <code class="text-emerald-300">K_MB</code>. Because Mallory holds decryption keys for both channels, she can auto-decrypt, inspect, and modify traffic in <strong>both directions</strong> (Alice → Bob and Bob → Alice).</p>
+                </div>
+
+                <div class="p-3 bg-slate-950 border border-slate-800 rounded-xl">
+                    <h3 class="font-bold text-white mb-1">4. AES-GCM Integrity vs Authentication</h3>
+                    <p>AES-GCM guarantees payload confidentiality and integrity <em>within an individual channel key</em>. However, because Mallory possesses key <code class="text-amber-300">K_AM</code> and key <code class="text-emerald-300">K_MB</code>, she decrypts messages on one channel and re-encrypts under the other channel key. Both endpoints' AES-GCM integrity checks pass successfully!</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- JAVASCRIPT LOGIC ENGINE -->
+    <script src="{{ url_for('static', filename='js/script.js') }}" defer></script>
+</body>
+</html>
